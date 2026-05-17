@@ -20,51 +20,36 @@ protocol ProductServiceProtocol{
 
 // MARK: Working Functional Service
 struct ProductService: ProductServiceProtocol{
+  let client: APIClient
   
-  private let url = URL(string: "https://api.escuelajs.co/api/v1/")!
+  init(){
+	 client = APIClient(baseURL: URLConstants.url)
+  }
   
-  // MARK:  - Fetching
+  // MARK:  - Fetching -GET-
   func fetchProducts() async throws -> [Product] {
-	 let requestModel = APIRequests<[Product]>(method: .get, path: "products")
-	 return try await execute(requestModel)
+	 let requestModel = APIRequests<[Product]>(method: .get, path: .products(.list))
+	 return try await client.execute(requestModel)
   }
   
   // MARK: - Creation -POST-
   func createProduct(_ payload: CreateProductRequest) async throws -> Product {
-	 let requestModel = try APIRequests<Product>(method: .post, path: "products", body: payload)
-	 return try await execute(requestModel)
+	 let requestModel = try APIRequests<Product>(method: .post, path: .products(.list), body: payload)
+	 return try await client.execute(requestModel)
   }
   
   // MARK: -Updating -PUT-
   func updateProduct(_ id: Int, with payload: UpdateProductRequest) async throws -> Product {
-	 let requestModel = try APIRequests<Product>(method: .put, path: "products/\(id)", body: payload)
-	 return try await execute(requestModel)
+	 let requestModel = try APIRequests<Product>(method: .put, path: .products(.byID(id)), body: payload)
+	 return try await client.execute(requestModel)
   }
   
-  //  -DELETING
+  // MARK: -DELETING -Delete-
   func delete(_ id: Int) async throws {
-	 let requestModel = APIRequests<EmptyResponse>(method: .delete, path: "products/\(id)")
-	 try await execute(requestModel)
+	 let requestModel = APIRequests<EmptyResponse>(method: .delete, path: .products(.byID(id)))
+	 try await client.execute(requestModel)
   }
   
-  @discardableResult
-  private func execute<Responce>(_ requestModel: APIRequests<Responce>) async throws -> Responce{
-	 let request = try requestModel.makeURLRequest(baseURL: url)
-	 
-	 let (data, response) = try await URLSession.shared.data(for: request)
-	 
-	 guard let httpResponse = response as? HTTPURLResponse else{
-		throw URLError(.badServerResponse)
-	 }
-	 
-	 guard 200..<300 ~= httpResponse.statusCode else{
-		let bodyString = String(data: data, encoding: .utf8) ?? "Non UTF8 data"
-		print("Update failed \(httpResponse.statusCode) - \(bodyString)")
-		throw URLError(.badServerResponse)
-	 }
-	 
-	 return try JSONDecoder().decode(Responce.self, from: data)
-  }
 }
 
 

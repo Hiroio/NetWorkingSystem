@@ -7,6 +7,8 @@
 
 import Foundation
 
+
+
 enum HTTPMethod: String{
   case get = "GET"
   case post = "POST"
@@ -18,14 +20,14 @@ struct EmptyResponse: Decodable {}
 
 struct APIRequests<Responce: Decodable> {
   let method: HTTPMethod
-  let path: String
+  let path: APIRoutes
   var queryItems: [URLQueryItem]
   var headers: [String: String]
   var body: Data?
   
   init(
 	 method: HTTPMethod,
-	 path: String,
+	 path: APIRoutes,
 	 queryItems: [URLQueryItem] = [],
 	 headers: [String : String] = [:],
 	 body: Data? = nil
@@ -39,7 +41,7 @@ struct APIRequests<Responce: Decodable> {
   
   init<Body: Encodable>(
 	 method: HTTPMethod,
-	 path: String,
+	 path: APIRoutes,
 	 queryItems: [URLQueryItem] = [],
 	 headers: [String : String] = [:],
 	 encoder: JSONEncoder = .init(),
@@ -57,7 +59,7 @@ struct APIRequests<Responce: Decodable> {
   }
   
   func makeURLRequest(baseURL: URL, defaultHeader: [String: String] = [:]) throws -> URLRequest{
-	 guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: true) else {
+	 guard var components = URLComponents(url: baseURL.appendingPathComponent(path.path), resolvingAgainstBaseURL: true) else {
 		throw URLError(.badURL)
 	 }
 	 
@@ -81,3 +83,5 @@ struct APIRequests<Responce: Decodable> {
 	 return request
   }
 }
+
+

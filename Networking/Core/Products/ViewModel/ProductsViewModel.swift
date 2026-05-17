@@ -7,9 +7,9 @@
 
 import Foundation
 
-@Observable
+@Observable @MainActor
 final class ProductsViewModel {
-  var products: [Product] = []
+  var loadingState: LoadingState<[Product]> = .idle
   
   private let service: ProductServiceProtocol
   
@@ -19,9 +19,12 @@ final class ProductsViewModel {
   
   //  MARK: - Fetching
   func loadProducts() async {
+	 loadingState = .loading
 	 do {
-		self.products = try await service.fetchProducts()
+		let products = try await service.fetchProducts()
+		loadingState = products.isEmpty ? .empty : .loaded(products)
 	 } catch {
+		loadingState = .error(error.localizedDescription)
 		print("DEBUG: Failed to fetch products with error: \(error)")
 	 }
   }
@@ -30,36 +33,70 @@ final class ProductsViewModel {
   func createProduct(_ payload: CreateProductRequest) async {
 	 do {
 		let newProduct = try await service.createProduct(payload)
-		print("new product: \(newProduct)")
+		insertOrStartProducts(with: newProduct)
 		
-		products.insert(newProduct, at: 0)
+		
 	 } catch {
+		loadingState = .error(error.localizedDescription)
 		print("DEBUG: Failed to create products with error: \(error)")
 	 }
   }
   
   //  MARK: - UPDATE Product
   func updateProduct(_ id: Int, with payload: UpdateProductRequest) async{
-	 guard let index = products.firstIndex(where: {$0.id == id}) else { return }
 	 do {
 		let newProduct = try await service.updateProduct(id, with: payload)
-		print("Updated product: \(newProduct)")
-
-		products[index] = newProduct
+		replaceProductifLoaded(with: newProduct)
 	 } catch {
 		print("DEBUG: Failed to update products with error: \(error)")
 	 }
   }
   
   func deleteProduct(_ id: Int) async {
-	 guard let index = products.firstIndex(where: {$0.id == id}) else { return }
 	 do {
 		try await service.delete(id)
 
-		products.remove(at: index)
+		removeProductifLoaded(id: id)
+
 	 } catch {
 		print("DEBUG: Failed to delete products with error: \(error)")
 	 }
+  }
+  
+  
+  private func insertOrStartProducts(with product: Product){
+	 switch loadingState {
+		case .loaded(var products):
+		products.insert(product, at: 0)
+		loadingState = .loaded(products)
+	 default:
+		loadingState = .loaded([product])
+	 }
+  }
+  
+  private func replaceProductifLoaded(with product: Product){
+	 guard case .loaded(var products) = loadingState else {
+		return
+	 }
+	 
+	 guard let index = products.firstIndex(where: {$0.id == product.id}) else {
+		return
+	 }
+	 
+	 products[index] = product
+	 loadingState = .loaded(products)
+  }
+  
+  private func removeProductifLoaded(id: Int){
+	 guard case .loaded(var products) = loadingState else {
+		return
+	 }
+	 guard let index = products.firstIndex(where: {$0.id == id}){
+		return
+	 }
+	 
+	 products.remove(at: index)
+	 loadingState = .loaded(products)
   }
 }
 

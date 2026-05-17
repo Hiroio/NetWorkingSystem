@@ -7,17 +7,28 @@ struct ProductsView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(viewModel.products) { product in
-                        NavigationLink(value: product) {
-                            ProductCardView(product: product)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding()
-            }
+			 Group{
+				switch viewModel.loadingState {
+				case .idle, .loading:
+				  ProgressView()
+				case .empty:
+				  Text("No Products to display")
+				case .error(let errorMessage):
+				  Text(errorMessage)
+				case .loaded(let products):
+				  ScrollView {
+						LazyVStack(spacing: 16) {
+							 ForEach(products) { product in
+								  NavigationLink(value: product) {
+										ProductCardView(product: product)
+								  }
+								  .buttonStyle(.plain)
+							 }
+						}
+						.padding()
+				  }
+				}
+			 }
             .navigationTitle("Products")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
