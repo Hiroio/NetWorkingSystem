@@ -9,6 +9,7 @@ import SwiftUI
 import Kingfisher
 
 struct ProductDetailView: View {
+  @Environment(ProductsViewModel.self) private var viewModel
     let product: Product
     @State private var isShowingEditForm = false
 
@@ -56,5 +57,9 @@ struct ProductDetailView: View {
                 }
             }
         }
+		  .sheet(isPresented: $isShowingEditForm) {
+			 ProductFormView(intent: .update(product))
+				.environment(viewModel)
+		  }
     }
 }

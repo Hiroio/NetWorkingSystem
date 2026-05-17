@@ -110,7 +110,7 @@ struct ProductFormView: View {
         
         switch intent {
         case .create:
-			 let product = CreateProductRequest(
+			 let payload = CreateProductRequest(
 				title: title,
 				price: parsedPrice,
 				description: productDescription,
@@ -118,11 +118,18 @@ struct ProductFormView: View {
 				images: [imageURL]
 			 )
 			 
-			 await viewModel.createProduct(product)
-            
+			 await viewModel.createProduct(payload)
+			 
 			 dismiss()
         case .update(let product):
-            print("Update product \(product.id)")
+			 let payload = UpdateProductRequest(
+				title: title,
+				price: parsedPrice
+			 )
+			 
+			 await viewModel.updateProduct(product.id, with: payload)
+			 
+			 dismiss()
         }
     }
     

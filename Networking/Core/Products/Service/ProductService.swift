@@ -11,48 +11,59 @@ protocol ProductServiceProtocol{
   func fetchProducts() async throws -> [Product]
   
   func createProduct(_ payload: CreateProductRequest) async throws -> Product
+  
+  func updateProduct(_ id: Int, with payload: UpdateProductRequest) async throws -> Product
+  
+  func delete(_ id: Int) async throws
 }
 
 
 // MARK: Working Functional Service
 struct ProductService: ProductServiceProtocol{
   
-  private let url = URL(string: "https://api.escuelajs.co/api/v1/products")!
+  private let url = URL(string: "https://api.escuelajs.co/api/v1/")!
   
-//  - Fetching
+  // MARK:  - Fetching
   func fetchProducts() async throws -> [Product] {
-	 let (data, responce) = try await URLSession.shared.data(from: url)
-	 
-	 guard let httpResponse = responce as? HTTPURLResponse, 200..<300 ~= httpResponse.statusCode else{
-		throw URLError(.badServerResponse)
-	 }
-	 
-	 
-	 return try JSONDecoder().decode([Product].self, from: data)
+	 let requestModel = APIRequests<[Product]>(method: .get, path: "products")
+	 return try await execute(requestModel)
   }
   
-//  - Creation -POST-
+  // MARK: - Creation -POST-
   func createProduct(_ payload: CreateProductRequest) async throws -> Product {
-	 var request = URLRequest(url: url)
-	 request.httpMethod = "POST"
-	 
-	 let body = try JSONEncoder().encode(payload)
-	 request.httpBody = body
-	 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+	 let requestModel = try APIRequests<Product>(method: .post, path: "products", body: payload)
+	 return try await execute(requestModel)
+  }
+  
+  // MARK: -Updating -PUT-
+  func updateProduct(_ id: Int, with payload: UpdateProductRequest) async throws -> Product {
+	 let requestModel = try APIRequests<Product>(method: .put, path: "products/\(id)", body: payload)
+	 return try await execute(requestModel)
+  }
+  
+  //  -DELETING
+  func delete(_ id: Int) async throws {
+	 let requestModel = APIRequests<EmptyResponse>(method: .delete, path: "products/\(id)")
+	 try await execute(requestModel)
+  }
+  
+  @discardableResult
+  private func execute<Responce>(_ requestModel: APIRequests<Responce>) async throws -> Responce{
+	 let request = try requestModel.makeURLRequest(baseURL: url)
 	 
 	 let (data, response) = try await URLSession.shared.data(for: request)
+	 
 	 guard let httpResponse = response as? HTTPURLResponse else{
 		throw URLError(.badServerResponse)
 	 }
 	 
 	 guard 200..<300 ~= httpResponse.statusCode else{
 		let bodyString = String(data: data, encoding: .utf8) ?? "Non UTF8 data"
-		print("Creation failed \(httpResponse.statusCode) - \(bodyString)")
+		print("Update failed \(httpResponse.statusCode) - \(bodyString)")
 		throw URLError(.badServerResponse)
 	 }
 	 
-	 
-	 return try JSONDecoder().decode(Product.self, from: data)
+	 return try JSONDecoder().decode(Responce.self, from: data)
   }
 }
 
@@ -66,6 +77,14 @@ struct MockProductService: ProductServiceProtocol{
   
   func createProduct(_ payload: CreateProductRequest) async throws -> Product {
 	 return Product.mockProducts.first!
+  }
+  
+  func updateProduct(_ id: Int, with payload: UpdateProductRequest) async throws -> Product {
+	 Product.mockProducts.first!
+  }
+  
+  func delete(_ id: Int) async throws {
+	 
   }
 }
 

@@ -17,7 +17,7 @@ final class ProductsViewModel {
 	 self.service = service
   }
   
-//  MARK: - Fetching
+  //  MARK: - Fetching
   func loadProducts() async {
 	 do {
 		self.products = try await service.fetchProducts()
@@ -26,7 +26,7 @@ final class ProductsViewModel {
 	 }
   }
   
-// MARK: - Creation
+  // MARK: - Creation Product
   func createProduct(_ payload: CreateProductRequest) async {
 	 do {
 		let newProduct = try await service.createProduct(payload)
@@ -35,6 +35,30 @@ final class ProductsViewModel {
 		products.insert(newProduct, at: 0)
 	 } catch {
 		print("DEBUG: Failed to create products with error: \(error)")
+	 }
+  }
+  
+  //  MARK: - UPDATE Product
+  func updateProduct(_ id: Int, with payload: UpdateProductRequest) async{
+	 guard let index = products.firstIndex(where: {$0.id == id}) else { return }
+	 do {
+		let newProduct = try await service.updateProduct(id, with: payload)
+		print("Updated product: \(newProduct)")
+
+		products[index] = newProduct
+	 } catch {
+		print("DEBUG: Failed to update products with error: \(error)")
+	 }
+  }
+  
+  func deleteProduct(_ id: Int) async {
+	 guard let index = products.firstIndex(where: {$0.id == id}) else { return }
+	 do {
+		try await service.delete(id)
+
+		products.remove(at: index)
+	 } catch {
+		print("DEBUG: Failed to delete products with error: \(error)")
 	 }
   }
 }

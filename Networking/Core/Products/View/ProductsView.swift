@@ -30,6 +30,7 @@ struct ProductsView: View {
             }
             .navigationDestination(for: Product.self) { product in
                 ProductDetailView(product: product)
+					 .environment(viewModel)
             }
             .sheet(isPresented: $isShowingCreateSheet) {
                 ProductFormView(intent: .create)
