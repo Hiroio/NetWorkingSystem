@@ -7,9 +7,10 @@
 
 import Foundation
 
-@Observable @MainActor
-final class ProductsViewModel {
+@Observable
+final class ProductsViewModel: @MainActor ListMutating {
   var loadingState: LoadingState<[Product]> = .idle
+  var mutationState: MutationState = .idle
   
   private let service: ProductServiceProtocol
   
@@ -31,72 +32,45 @@ final class ProductsViewModel {
   
   // MARK: - Creation Product
   func createProduct(_ payload: CreateProductRequest) async {
+	 mutationState = .inProgress(.create)
 	 do {
 		let newProduct = try await service.createProduct(payload)
-		insertOrStartProducts(with: newProduct)
-		
-		
+		insertOrStart(with: newProduct)
+		mutationState = .succeded(.create)
 	 } catch {
-		loadingState = .error(error.localizedDescription)
+		mutationState = .failed(.create, error.localizedDescription)
 		print("DEBUG: Failed to create products with error: \(error)")
 	 }
   }
   
   //  MARK: - UPDATE Product
   func updateProduct(_ id: Int, with payload: UpdateProductRequest) async{
+	 mutationState = .inProgress(.update)
 	 do {
 		let newProduct = try await service.updateProduct(id, with: payload)
-		replaceProductifLoaded(with: newProduct)
+		replaceifLoaded(with: newProduct)
+		mutationState = .succeded(.update)
 	 } catch {
+		mutationState = .failed(.update, error.localizedDescription)
 		print("DEBUG: Failed to update products with error: \(error)")
 	 }
   }
   
   func deleteProduct(_ id: Int) async {
+	 mutationState = .inProgress(.delete)
 	 do {
 		try await service.delete(id)
 
-		removeProductifLoaded(id: id)
-
+		removeifLoaded(id: id)
+		mutationState = .succeded(.delete)
 	 } catch {
+		mutationState = .failed(.delete, error.localizedDescription)
 		print("DEBUG: Failed to delete products with error: \(error)")
 	 }
   }
   
-  
-  private func insertOrStartProducts(with product: Product){
-	 switch loadingState {
-		case .loaded(var products):
-		products.insert(product, at: 0)
-		loadingState = .loaded(products)
-	 default:
-		loadingState = .loaded([product])
-	 }
-  }
-  
-  private func replaceProductifLoaded(with product: Product){
-	 guard case .loaded(var products) = loadingState else {
-		return
-	 }
-	 
-	 guard let index = products.firstIndex(where: {$0.id == product.id}) else {
-		return
-	 }
-	 
-	 products[index] = product
-	 loadingState = .loaded(products)
-  }
-  
-  private func removeProductifLoaded(id: Int){
-	 guard case .loaded(var products) = loadingState else {
-		return
-	 }
-	 guard let index = products.firstIndex(where: {$0.id == id}){
-		return
-	 }
-	 
-	 products.remove(at: index)
-	 loadingState = .loaded(products)
+  func resetMutatingState() {
+	 mutationState = .idle
   }
 }
 

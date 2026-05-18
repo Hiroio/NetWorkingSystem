@@ -1,11 +1,11 @@
 import Foundation
 import Observation
 
-@MainActor
-@Observable
-final class UserListViewModel {
-    var users: [User] = []
 
+@Observable
+final class UserListViewModel: @MainActor ListMutating {
+  var loadingState: LoadingState<[User]> = .loading
+  
   let service: UserServiceProtocol
   
   init(service: UserServiceProtocol){
@@ -13,9 +13,10 @@ final class UserListViewModel {
   }
   
     func loadUsers() async {
+		loadingState = .loading
 		do {
 		  let fetchedUsers = try await service.fetchUsers()
-		  self.users = fetchedUsers
+		  loadingState = fetchedUsers.isEmpty ? .empty : .loaded(fetchedUsers)
 		} catch {
 		  print("Failed to fetch users, error: \(error)")
 		}
@@ -24,28 +25,26 @@ final class UserListViewModel {
     func createUser(_ payload: CreateUserRequest) async {
 		do {
 		  let newUser = try await service.createUser(payload)
-		  
-		  users.insert(newUser, at: 0)
+		  insertOrStart(with: newUser)
 		} catch {
+		  loadingState = .error(error.localizedDescription)
 		  print("Failed to create users, error: \(error)")
 		}
     }
 
     func updateUser(id: Int, payload: UpdateUserRequest) async {
-		guard let index = users.firstIndex(where: {$0.id == id})else{ return }
 		do {
 		  let updatedUser = try await service.updateUser(id, with: payload)
-		  users[index] = updatedUser
+		  replaceifLoaded(with: updatedUser)
 		} catch {
 		  print("Failed to update users, error: \(error)")
 		}
     }
     
   func deleteUser(id: Int) async {
-	 guard let index = users.firstIndex(where: {$0.id == id})else{ return }
 	 do {
 		try await service.delete(id)
-		users.remove(at: index)
+		removeifLoaded(id: id)
 	 } catch {
 		print("Failed to delete users, error: \(error)")
 	 }
@@ -60,6 +59,4 @@ final class UserListViewModel {
 	 }
 	 return false
   }
-  
-  
 }
